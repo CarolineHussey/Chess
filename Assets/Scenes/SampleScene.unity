@@ -26,7 +26,7 @@ RenderSettings:
   m_AmbientIntensity: 1
   m_AmbientMode: 0
   m_SubtractiveShadowColor: {r: 0.42, g: 0.478, b: 0.627, a: 1}
-  m_SkyboxMaterial: {fileID: 10304, guid: 0000000000000000f000000000000000, type: 0}
+  m_SkyboxMaterial: {fileID: 2100000, guid: f9b20f1c25331f54e8b89fddf524e32f, type: 2}
   m_HaloStrength: 0.5
   m_FlareStrength: 1
   m_FlareFadeSpeed: 3
@@ -38,7 +38,7 @@ RenderSettings:
   m_ReflectionIntensity: 1
   m_CustomReflection: {fileID: 0}
   m_Sun: {fileID: 705507994}
-  m_IndirectSpecularColor: {r: 0.18028378, g: 0.22571412, b: 0.30692285, a: 1}
+  m_IndirectSpecularColor: {r: 0.07717022, g: 0.08131024, b: 0.18175581, a: 1}
   m_UseRadianceAmbientProbe: 0
 --- !u!157 &3
 LightmapSettings:
@@ -144,6 +144,19 @@ MonoBehaviour:
   tileSize: 0.7
   yOffset: 0.15
   boardCenter: {x: 0, y: 0, z: 0}
+  deathSize: 0.5
+  deathSpacing: 0.375
+  dragOffset: 1
+  Prefabs:
+  - {fileID: 3435051634472965201, guid: 31e93de17b77a514ab08392446411426, type: 3}
+  - {fileID: 425600414965885780, guid: ae4b0d93c211ce34baadc8b1c61be694, type: 3}
+  - {fileID: 3408624951869938490, guid: d2dfde40926dd2640be455e1c24baccc, type: 3}
+  - {fileID: 3746267316636180381, guid: f340467b6fd9f3246b5cd5c3409bf269, type: 3}
+  - {fileID: 8126591059375707184, guid: 0a767d341da7c4c4bbb3ef9b1e4be749, type: 3}
+  - {fileID: 780769733302036137, guid: e7f7648d104b33b4b945339c1ad8715f, type: 3}
+  teamMaterials:
+  - {fileID: 2100000, guid: d3a7926677be8dc4d9acfbfebf12d9f3, type: 2}
+  - {fileID: 2100000, guid: 01ff137efbc85994192b6a51aad74d94, type: 2}
 --- !u!1 &705507993
 GameObject:
   m_ObjectHideFlags: 0
@@ -182,7 +195,7 @@ Light:
     m_Type: 2
     m_Resolution: -1
     m_CustomResolution: -1
-    m_Strength: 1
+    m_Strength: 0.498
     m_Bias: 0.05
     m_NormalBias: 0.4
     m_NearPlane: 0.2
@@ -230,13 +243,13 @@ Transform:
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 705507993}
-  m_LocalRotation: {x: 0.40821788, y: -0.23456968, z: 0.10938163, w: 0.8754261}
+  m_LocalRotation: {x: 0.4474443, y: -0.37423477, z: 0.025894575, w: 0.8118322}
   m_LocalPosition: {x: 0, y: 3, z: 0}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_Children: []
   m_Father: {fileID: 0}
   m_RootOrder: 1
-  m_LocalEulerAnglesHint: {x: 50, y: -30, z: 0}
+  m_LocalEulerAnglesHint: {x: 48.235, y: -61.338, z: -26.083}
 --- !u!1 &963194225
 GameObject:
   m_ObjectHideFlags: 0
