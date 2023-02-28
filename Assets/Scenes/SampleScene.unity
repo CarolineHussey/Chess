@@ -422,5 +422,9 @@ PrefabInstance:
       propertyPath: m_Name
       value: ChessBoard
       objectReference: {fileID: 0}
+    - target: {fileID: -927199367670048503, guid: a7b6d26ad5b4fd242adbf634c007cb14, type: 3}
+      propertyPath: m_Layer
+      value: 0
+      objectReference: {fileID: 0}
     m_RemovedComponents: []
   m_SourcePrefab: {fileID: 100100000, guid: a7b6d26ad5b4fd242adbf634c007cb14, type: 3}
