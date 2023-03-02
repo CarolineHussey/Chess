@@ -22,6 +22,10 @@ public class ChessPiece : MonoBehaviour
     private Vector3 desiredPosition; // to snap the piece to the selected tile
     private Vector3 desiredScale = Vector3.one; //for when piecesa re taken and removed from the board
 
+    private void Start()
+    {
+        transform.rotation = Quaternion.Euler((team == 0) ? Vector3.zero : new Vector3(0, 180, 0));
+    }
     private void Update()
     {
         transform.position = Vector3.Lerp(transform.position, desiredPosition, Time.deltaTime * 10);
