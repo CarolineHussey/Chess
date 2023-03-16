@@ -2,6 +2,13 @@ using System;
 using System.Collections.Generic;
 using UnityEngine;
 
+public enum SpecialMove
+{
+    None, 
+    EnPassant, 
+    Castling,
+    Promotion
+}
 public class ChessB : MonoBehaviour
 {
 
@@ -25,6 +32,7 @@ public class ChessB : MonoBehaviour
     private List<Vector2Int> availableMoves = new List<Vector2Int>();
     private List<ChessPiece> deadWhites = new List<ChessPiece>();
     private List<ChessPiece> deadBlacks = new List<ChessPiece>();
+    
 
     private const int TILE_COUNT_X = 8;
     private const int TILE_COUNT_Y = 8;
@@ -33,6 +41,9 @@ public class ChessB : MonoBehaviour
     private Vector2Int currentHover;
     private Vector3 bounds;
     private bool isWhiteTurn;
+    private SpecialMove specialMove;
+    private List<Vector2Int[]> moveList = new List<Vector2Int[]>();
+    
 
     private void Awake()
     {
@@ -87,6 +98,9 @@ public class ChessB : MonoBehaviour
 
                         //highlight the available tiles
                         availableMoves = currentlyDragging.GetAvailableMoves(ref chessPieceLocation, TILE_COUNT_X, TILE_COUNT_Y);
+                        //get a list of special moves
+                        specialMove = currentlyDragging.GetSpecialMoves(ref chessPieceLocation, ref moveList, ref availableMoves);
+
                         HighlightTiles();
                     }
                 }
@@ -185,8 +199,8 @@ public class ChessB : MonoBehaviour
         chessPieceLocation[0, 7] = SpawnSinglePiece(ChessPieceType.Rook, blackTeam);
         chessPieceLocation[1, 7] = SpawnSinglePiece(ChessPieceType.Knight, blackTeam);
         chessPieceLocation[2, 7] = SpawnSinglePiece(ChessPieceType.Bishop, blackTeam);
-        chessPieceLocation[3, 7] = SpawnSinglePiece(ChessPieceType.King, blackTeam);
-        chessPieceLocation[4, 7] = SpawnSinglePiece(ChessPieceType.Queen, blackTeam);
+        chessPieceLocation[3, 7] = SpawnSinglePiece(ChessPieceType.Queen, blackTeam);
+        chessPieceLocation[4, 7] = SpawnSinglePiece(ChessPieceType.King, blackTeam);
         chessPieceLocation[5, 7] = SpawnSinglePiece(ChessPieceType.Bishop, blackTeam);
         chessPieceLocation[6, 7] = SpawnSinglePiece(ChessPieceType.Knight, blackTeam);
         chessPieceLocation[7, 7] = SpawnSinglePiece(ChessPieceType.Rook, blackTeam);
@@ -200,8 +214,8 @@ public class ChessB : MonoBehaviour
         chessPieceLocation[0, 0] = SpawnSinglePiece(ChessPieceType.Rook, whiteTeam);
         chessPieceLocation[1, 0] = SpawnSinglePiece(ChessPieceType.Knight, whiteTeam);
         chessPieceLocation[2, 0] = SpawnSinglePiece(ChessPieceType.Bishop, whiteTeam);
-        chessPieceLocation[3, 0] = SpawnSinglePiece(ChessPieceType.King, whiteTeam);
-        chessPieceLocation[4, 0] = SpawnSinglePiece(ChessPieceType.Queen, whiteTeam);
+        chessPieceLocation[3, 0] = SpawnSinglePiece(ChessPieceType.Queen, whiteTeam);
+        chessPieceLocation[4, 0] = SpawnSinglePiece(ChessPieceType.King, whiteTeam);
         chessPieceLocation[5, 0] = SpawnSinglePiece(ChessPieceType.Bishop, whiteTeam);
         chessPieceLocation[6, 0] = SpawnSinglePiece(ChessPieceType.Knight, whiteTeam);
         chessPieceLocation[7, 0] = SpawnSinglePiece(ChessPieceType.Rook, whiteTeam);
@@ -301,7 +315,8 @@ public class ChessB : MonoBehaviour
         deadBlacks.Clear();
 
         currentlyDragging = null;
-        availableMoves = new List<Vector2Int>();
+        availableMoves.Clear();
+        moveList.Clear();
 
         //restart board
         SpawnAllPieces();
@@ -314,8 +329,87 @@ public class ChessB : MonoBehaviour
         Application.Quit();
     }
 
+    // Special Moves
+
+    private void ProcessSpecialMove()
+    {
+
+        //En Passant
+        if(specialMove == SpecialMove.EnPassant)
+        {
+            Debug.Log("Process Special Move");
+            var newMove = moveList[moveList.Count - 1];
+            ChessPiece myPawn = chessPieceLocation[newMove[1].x, newMove[1].y];
+            var targetPawnPosition = moveList[moveList.Count - 2];
+            ChessPiece otherPawn = chessPieceLocation[targetPawnPosition[1].x, targetPawnPosition[1].y];
+
+            if(myPawn.currentX == otherPawn.currentX) //if both pawns are on the same x axis location
+            {
+                if(myPawn.currentY == otherPawn.currentY - 1 || myPawn.currentY == otherPawn.currentY + 1) //checks direction (team)
+                {
+                    if(otherPawn.team == 0)
+                    {
+                        deadWhites.Add(otherPawn);
+                        deadWhites.Add(otherPawn);
+                        otherPawn.SetScale(Vector3.one * deathSize);
+                        otherPawn.SetPosition(new Vector3(8 * tileSize, yOffset, -1 * tileSize) - bounds + new Vector3(tileSize / 2, 0, tileSize / 2) + (Vector3.forward * deathSpacing) * deadWhites.Count);
+                    }
+                    else
+                    {
+                        deadBlacks.Add(otherPawn);
+                        deadBlacks.Add(otherPawn);
+                        otherPawn.SetScale(Vector3.one * deathSize);
+                        otherPawn.SetPosition(new Vector3(-1 * tileSize, yOffset, 8 * tileSize) - bounds + new Vector3(tileSize / 2, 0, tileSize / 2) + (Vector3.back * deathSpacing) * deadBlacks.Count);
+                    }
+                    chessPieceLocation[otherPawn.currentX, otherPawn.currentY] = null;
+                }
+            }
+
+        }
+
+        //Castling
+        if(specialMove == SpecialMove.Castling)
+        {
+            Vector2Int[] lastMove = moveList[moveList.Count - 1];
+
+            //Left Rook
+            if (lastMove[1].x == 2)
+            {
+                if (lastMove[1].y == 0) //white team
+                {
+                    chessPieceLocation[3, 0] = chessPieceLocation[0, 0];
+                    PositionSinglePiece(3, 0);
+                    chessPieceLocation[0, 0] = null;
+                }
+                else if (lastMove[1].y == 7) //black team
+                {
+                    chessPieceLocation[3, 7] = chessPieceLocation[0, 7];
+                    PositionSinglePiece(3, 7);
+                    chessPieceLocation[0, 7] = null;
+                }
+            }
+
+            //Right Rook
+            else if (lastMove[1].x == 6)
+            {
+                if (lastMove[1].y == 0) //white team
+                {
+                    chessPieceLocation[5, 0] = chessPieceLocation[7, 0];
+                    PositionSinglePiece(5, 0);
+                    chessPieceLocation[7, 0] = null;
+                }
+                else if (lastMove[1].y == 7) //black team
+                {
+                    chessPieceLocation[5, 7] = chessPieceLocation[7, 7];
+                    PositionSinglePiece(5, 7);
+                    chessPieceLocation[7, 7] = null;
+                }
+            }
+        }
+    }
+
     //Operations
-    private bool ContainsValidMove(ref List<Vector2Int> moves, Vector2 pos)
+    private bool ContainsValidMove(ref List<Vector2Int> moves, Vector2Int pos)
     {
         for (int i = 0; i < moves.Count; i++)
             if (moves[i].x == pos.x && moves[i].y == pos.y)
@@ -325,7 +419,7 @@ public class ChessB : MonoBehaviour
     }
     private bool MoveTo(ChessPiece cp, int x, int y)
     {
-        if (!ContainsValidMove(ref availableMoves, new Vector2(x, y)))
+        if (!ContainsValidMove(ref availableMoves, new Vector2Int(x, y)))
             return false;
 
         Vector2Int previousPosition = new Vector2Int(cp.currentX, cp.currentY);
@@ -365,6 +459,9 @@ public class ChessB : MonoBehaviour
         PositionSinglePiece(x, y);
 
         isWhiteTurn = !isWhiteTurn;
+        moveList.Add(new Vector2Int[] { previousPosition, new Vector2Int(x, y)} );
+
+        ProcessSpecialMove();
 
         return true;
     }
