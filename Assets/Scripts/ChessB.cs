@@ -451,6 +451,64 @@ public class ChessB : MonoBehaviour
 
     }
 
+    private bool CheckForCheckmate()
+    {
+        var lastMove = moveList[moveList.Count - 1];
+        int targetTeam = chessPieceLocation[lastMove[1].x, lastMove[1].y].team == 0 ? 1 : 0;
+
+        List<ChessPiece> defendingPieces = new List<ChessPiece>();
+        List<ChessPiece> attackingPieces = new List<ChessPiece>();
+
+        ChessPiece targetKing = null;
+        for (int x = 0; x < TILE_COUNT_X; x++)
+            for (int y = 0; y < TILE_COUNT_Y; y++)
+                if (chessPieceLocation[x, y] != null)
+                {
+                    if (chessPieceLocation[x, y].team == targetTeam)
+                    {
+                        defendingPieces.Add(chessPieceLocation[x, y]);
+                        if(chessPieceLocation[x, y].type == ChessPieceType.King)
+                            targetKing = chessPieceLocation[x, y];
+                    }
+                    else
+                    {
+                        attackingPieces.Add(chessPieceLocation[x, y]);
+                    }
+                }
+        
+        //check if king is under attack
+        List<Vector2Int> currentAvailableMoves = new List<Vector2Int>();
+        for (int i = 0; i < attackingPieces.Count; i++)
+        {
+            var pieceMoves = attackingPieces[i].GetAvailableMoves(ref chessPieceLocation, TILE_COUNT_X, TILE_COUNT_Y);
+            for (int k = 0; k < pieceMoves.Count; k++)
+                currentAvailableMoves.Add(pieceMoves[k]);
+        }
+
+        //are we in check?
+        if (ContainsValidMove(ref currentAvailableMoves, new Vector2Int(targetKing.currentX, targetKing.currentY)))
+        {
+            //if king is under threat, can we protect him?
+            for (int i = 0; i < defendingPieces.Count; i++)
+            {
+                List<Vector2Int> defendingMoves = defendingPieces[i].GetAvailableMoves(ref chessPieceLocation, TILE_COUNT_X, TILE_COUNT_Y);
+
+                //if we are in checkmate defendingMoves will be empty
+                SimulateMoveForSinglePiece(defendingPieces[i], ref defendingMoves, targetKing);
+
+                //if we find a move that can protect the king
+                if (defendingMoves.Count != 0)
+                    return false; //king is in check, but not in checkmate
+
+            }
+
+            //if defendingMoves = 0 we cannot find any moves to defend the king;
+            return true; //Checkmate exit
+
+        }
+
+        return false;
+    }
     /// <summary>
     /// 
     /// </summary>
@@ -593,6 +651,10 @@ public class ChessB : MonoBehaviour
         moveList.Add(new Vector2Int[] { previousPosition, new Vector2Int(x, y)} );
 
         ProcessSpecialMove();
+        if(CheckForCheckmate())
+        {
+            Checkmate(cp.team);
+        }
 
         return true;
     }
