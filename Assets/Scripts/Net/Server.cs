@@ -65,4 +65,89 @@ public class Server : MonoBehaviour
     {
         ShutDown();
     }
+
+    public void Update()
+    {
+        if (!isActive)
+            return; //if it is not active, do nothing
+        //KeepAlive(); //sends a message every 20 seconds to make sre there is constant communication back & forth between the server & client.
+        driver.ScheduleUpdate().Complete(); //empties queue of messages coming in 
+
+        CleanupConections(); //is there anyone no longer connected that we still have the reference
+        AcceptNewConnections(); //is there anyone trying to connect to our server?
+        UpdateMessagePump(); //are they sending us a message? do we have to reply?
+    }
+    private void CleanupConections()
+    {
+        for (int i = 0; i < connections.Length; i++)
+        {
+            if (!connections[i].IsCreated) //if the connecton is not created
+            {
+                connections.RemoveAtSwapBack(i); //remove the connection at swapback
+                --i;
+            }
+        }
+    }
+    private void AcceptNewConnections()
+    {
+        NetworkConnection c;
+
+        while ((c = driver.Accept()) != default(NetworkConnection)) //if someone is trying to make a connection and it is not the default network connection
+        {
+            connections.Add(c); //add to list of connections
+        }
+    }
+
+    private void UpdateMessagePump()
+    {
+        DataStreamReader stream; //streamReader to be used for messages if there is one
+        for (int i = 0; i < connections.Length; i++)
+        {
+            NetworkEvent.Type cmd; //the messages they can send is either Data (Net message - package with message / specific informaiton in it) or Disconnect
+            while ((cmd = driver.PopEventForConnection(connections[i], out stream)) != NetworkEvent.Type.Empty)
+            {
+                if (cmd == NetworkEvent.Type.Data)
+                {
+                    //NetUtility.OnData(stream, connections[i], this);
+                }
+                else if (cmd == NetworkEvent.Type.Disconnect)
+                {
+                    Debug.Log("Client disconnected from server");
+                    connections[i] = default(NetworkConnection); //reset the connection
+                    connectionDropped?.Invoke(); 
+                    ShutDown(); //if the other player disconnects, shut down the connection (applicable for 2 player games only)
+                }
+            }
+        }
+
+    }
+
+    /// <summary>
+    /// Use when you want to send a specific message to a specifc person (only one client)
+    /// </summary>
+    /// <param name="connection">Start a connection with a very specific person</param>
+    /// <param name="msg"></param>
+    public void SendToClient(NetworkConnection connection, NetMessage msg)
+    {
+        DataStreamWriter writer;
+        driver.BeginSend(connection, out writer); //BeginSend starts by grabbing the packet, writes down the name/address of the destination. It puts the writer into the pipeline so that the clients can send messages between each other; 
+        //msg.Serialize(ref writer); //The packet is received from BeginSend and puts it through our own messageWriter - where we can fill in the package received with a message (information).
+        driver.EndSend(writer); //The packet is sent back to the address provided in BeginSend - this time with the message / information we wrote to it.
+    }
+
+    /// <summary>
+    /// Use when you want to send a single message to every single client there is
+    /// </summary>
+    /// <param name="msg"></param>
+    public void Broadcast(NetMessage msg)
+    {
+        for (int i = 0; i < connections.Length; i++)
+            if(connections[i].IsCreated)
+            {
+             //   Debug.Log($"Sending {msg.Code} to : {connections[i].InternalId}");
+                SendToClient(connections[i], msg);
+            }
+    }
+
+
 }
