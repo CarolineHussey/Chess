@@ -3,7 +3,7 @@ public class NetKeepAlive : NetMessage
 {
     //this script handles packages concerned with the OpCode KEEP_ALIVE
     //constructors
-    public NetKeepAlive() //when the package is created - this class assigns the correct message
+    public NetKeepAlive() //when the package is created for sending- this class assigns the correct message
     {
         //when a new package is created, assign the correct OpCode for simple parsing
         Code = OpCode.KEEP_ALIVE;
@@ -19,7 +19,7 @@ public class NetKeepAlive : NetMessage
     //this is called in the SendToClient method (here it is just the simple byte to keep the network connection alive)
     public override void Serialize(ref DataStreamWriter writer)
     {
-        //write the OpCode on the outside of the data packet
+        //write the OpCode to the data packet
         writer.WriteByte((byte)Code);
     }
 

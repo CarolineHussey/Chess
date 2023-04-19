@@ -2,6 +2,7 @@ using System;
 using UnityEngine;
 using Unity.Collections;
 using Unity.Networking.Transport;
+using Unity;
 
 public class Client : MonoBehaviour
 {
@@ -78,12 +79,13 @@ public class Client : MonoBehaviour
         {
             if (cmd == NetworkEvent.Type.Connect)
             {
-                //SendToServer(new NetWelcome());
+                SendToServer(new NetWelcome()); //this is sent by client to server - the server is listenign for this message - in the ChessB script via RegisterEvents() method, in the awake call
                 Debug.Log("Connected!");
             }
             else if (cmd == NetworkEvent.Type.Data)
             {
                 NetUtility.OnData(stream, default(NetworkConnection));
+                Debug.Log("Keep Alive");
             }
             else if (cmd == NetworkEvent.Type.Disconnect)
             {

@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using Unity.Networking.Transport;
 using UnityEngine;
 
 public enum SpecialMove
@@ -43,6 +44,10 @@ public class ChessB : MonoBehaviour
     private bool isWhiteTurn;
     private SpecialMove specialMove;
     private List<Vector2Int[]> moveList = new List<Vector2Int[]>();
+
+    //Multiplayer logic
+    private int playerCount = -1; // for server to assign team in OnWelcomeServer
+    private int currentTeam = -1; //for server and client
     
 
     private void Awake()
@@ -51,7 +56,7 @@ public class ChessB : MonoBehaviour
         GenerateAllTiles(tileSize, TILE_COUNT_X, TILE_COUNT_Y);
         SpawnAllPieces();
         PositionAllPieces();
-
+        RegisterEvents();
     }
 
     private void Update()
@@ -669,4 +674,27 @@ public class ChessB : MonoBehaviour
         return -Vector2Int.one; // this will indicate if tiles aren't beig generated as it will cause the game to crash :/
     }
 
+    #region
+    private void RegisterEvents()
+    {
+        NetUtility.C_WELCOME += OnWelcomeServer; //server is listening for the welcome message
+    }
+
+    private void UnRegisterEvents()
+    {
+        
+    }
+    //Server
+    private void OnWelcomeServer(NetMessage msg, NetworkConnection cnn)
+    {
+        //Cient has connected - assign a team and return message to client
+        NetWelcome nw = msg as NetWelcome;
+        nw.AssignedTeam = ++playerCount;
+
+        //return the new message (nw) to the client with data (AssignedTeam)
+        Server.Instance.SendToClient(cnn, nw); 
+    }
+
+    //Client
+    #endregion
 }

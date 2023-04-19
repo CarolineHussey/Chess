@@ -19,8 +19,8 @@ public class GameUI : MonoBehaviour
     public void OnLocalGameButton()
     {
         menuAnimator.SetTrigger("NoMenu");
-        server.Init(8007);
-        client.Init("127.0.0.1", 8007);
+        server.Init(8005);
+        client.Init("127.0.0.1", 8005);
     }
 
     public void OnOnlineGameButton()
@@ -30,15 +30,15 @@ public class GameUI : MonoBehaviour
 
     public void OnOnlineHostButton()
     {
-        server.Init(8007);
-        client.Init("127.0.0.1", 8007);
+        server.Init(8005);
+        client.Init("127.0.0.1", 8005);
         menuAnimator.SetTrigger("HostMenu");
     }
 
     public void OnOnlineConnectButton()
     {
-        client.Init(addressInput.text, 8007);
-        //menuAnimator.SetTrigger("NoMenu"); //add additional logic for this later
+        client.Init(addressInput.text, 8005);
+        menuAnimator.SetTrigger("NoMenu"); 
     }
 
     public void OnOnlineBackButton()
