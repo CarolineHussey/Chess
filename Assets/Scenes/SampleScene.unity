@@ -3026,6 +3026,8 @@ GameObject:
   - component: {fileID: 1477888103}
   - component: {fileID: 1477888104}
   - component: {fileID: 1477888105}
+  - component: {fileID: 1477888107}
+  - component: {fileID: 1477888106}
   m_Layer: 5
   m_Name: GameUI
   m_TagString: Untagged
@@ -3094,7 +3096,34 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 44476f4b04e836145b36d962f68407f3, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
+  server: {fileID: 1477888107}
+  client: {fileID: 1477888106}
   menuAnimator: {fileID: 715841034}
+  addressInput: {fileID: 1671916508}
+--- !u!114 &1477888106
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1477888102}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: c13f16e74e6c9f04cb3b3694e3bf2812, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+--- !u!114 &1477888107
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1477888102}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 5d316ce519fe3034d91043ca8d5531b6, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
 --- !u!1 &1531393299
 GameObject:
   m_ObjectHideFlags: 0
