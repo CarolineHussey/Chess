@@ -1,6 +1,13 @@
 using UnityEngine;
 using TMPro;
 
+public enum CameraAngle
+{
+    menu = 0,
+    whiteTeam = 1,
+    blackTeam = 2
+}
+
 public class GameUI : MonoBehaviour
 {
     public static GameUI Instance { set; get; } //alternatively could use MonoSingleton
@@ -10,12 +17,29 @@ public class GameUI : MonoBehaviour
 
     [SerializeField] private Animator menuAnimator;
     [SerializeField] private TMP_InputField addressInput;
+    [SerializeField] private GameObject[] cameraAngles;
 
     private void Awake()
     {
         Instance = this;
     }
 
+    //Cameras
+
+    /// <summary>
+    /// iterates through all camera angles in the list of cameraAngles and sets them to inactive.  it then activates the right camera for the respective player
+    /// this is called in 'OnStartGameClient' in ChessB - tied to START_GAME messaging
+    /// </summary>
+    /// <param name="index">takes the team identifier as an arguement and uses that to set the right camera</param>
+    public void ChangeCamera(CameraAngle index)
+    {
+        for (int i = 0; i < cameraAngles.Length; i++)
+            cameraAngles[i].SetActive(false);
+
+        cameraAngles[(int)index].SetActive(true);
+    }
+
+    //Buttons
     public void OnLocalGameButton()
     {
         menuAnimator.SetTrigger("NoMenu");

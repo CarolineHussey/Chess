@@ -46,8 +46,8 @@ public class ChessB : MonoBehaviour
     private List<Vector2Int[]> moveList = new List<Vector2Int[]>();
 
     //Multiplayer logic
-    private int playerCount = -1; // for server to assign team in OnWelcomeServer
-    private int currentTeam = -1; //for server and client
+    private int playerCount = -1; // for server to assign team in OnWelcomeServer (track how many players)
+    private int currentTeam = -1; //for server and client (tracks team assignment)
     
 
     private void Awake()
@@ -677,7 +677,10 @@ public class ChessB : MonoBehaviour
     #region
     private void RegisterEvents()
     {
-        NetUtility.C_WELCOME += OnWelcomeServer; //server is listening for the welcome message
+        NetUtility.S_WELCOME += OnWelcomeServer; //server is listening for the WELCOME message
+        NetUtility.C_WELCOME += OnWelcomeClient; //client is listening for the response
+        NetUtility.C_START_GAME += OnSartGameClient; //client is listening for the START_GAME message
+
     }
 
     private void UnRegisterEvents()
@@ -688,13 +691,29 @@ public class ChessB : MonoBehaviour
     private void OnWelcomeServer(NetMessage msg, NetworkConnection cnn)
     {
         //Cient has connected - assign a team and return message to client
-        NetWelcome nw = msg as NetWelcome;
+        NetWelcome nw = msg as NetWelcome; //here we change the type of message to NetWelcome so that we can write to it
         nw.AssignedTeam = ++playerCount;
 
-        //return the new message (nw) to the client with data (AssignedTeam)
-        Server.Instance.SendToClient(cnn, nw); 
+        //return the new message (nw) to the client with data (AssignedTeam is stored in nw)
+        Server.Instance.SendToClient(cnn, nw);
+
+        // once connected & team is assigned, send NetStartGame message
+        if (playerCount == 1)
+            Server.Instance.Broadcast(new NetStartGame());
     }
 
     //Client
+    private void OnWelcomeClient(NetMessage msg)
+    {
+        NetWelcome nw = msg as NetWelcome;
+        currentTeam = nw.AssignedTeam;
+        Debug.Log($"Assigned Team: {nw.AssignedTeam}");
+    }
+
+    private void OnSartGameClient(NetMessage msg)
+    {
+        //the game is already running in the background; we just need to change the camera to bring it into view
+        GameUI.Instance.ChangeCamera((currentTeam == 0) ? CameraAngle.whiteTeam : CameraAngle.blackTeam); // 0 = white team 
+    }
     #endregion
 }
