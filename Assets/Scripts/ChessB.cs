@@ -48,9 +48,10 @@ public class ChessB : MonoBehaviour
     //Multiplayer logic
     private int playerCount = -1; // for server to assign team in OnWelcomeServer (track how many players)
     private int currentTeam = -1; //for server and client (tracks team assignment)
+    private bool localGame = true; //to keep track if game is online or local - value is set in GameUI script by listening for event
     
 
-    private void Awake()
+    private void Start()
     {
         isWhiteTurn = true;
         GenerateAllTiles(tileSize, TILE_COUNT_X, TILE_COUNT_Y);
@@ -97,7 +98,7 @@ public class ChessB : MonoBehaviour
                 if(chessPieceLocation[hitPosition.x, hitPosition.y] != null)
                 {
                     //Turn Taking
-                    if((chessPieceLocation[hitPosition.x, hitPosition.y].team == 0 && isWhiteTurn) || (chessPieceLocation[hitPosition.x, hitPosition.y].team == 1 && !isWhiteTurn))
+                    if((chessPieceLocation[hitPosition.x, hitPosition.y].team == 0 && isWhiteTurn && currentTeam == 0) || (chessPieceLocation[hitPosition.x, hitPosition.y].team == 1 && !isWhiteTurn && currentTeam == 1))
                     {
                         currentlyDragging = chessPieceLocation[hitPosition.x, hitPosition.y];
 
@@ -113,17 +114,32 @@ public class ChessB : MonoBehaviour
                 }
             }
 
-            //if we release the mouse button
+            //if we release the mouse button (launched by client only)
             if (currentlyDragging != null && Input.GetMouseButtonUp(0))
             {
                 Vector2Int previousPosition = new Vector2Int(currentlyDragging.currentX, currentlyDragging.currentY); //the position of the piece before the cursor is released
-                
-                bool validMove = MoveTo(currentlyDragging, hitPosition.x, hitPosition.y);
-                if (!validMove)
-                    currentlyDragging.SetPosition(GetTileCenter(previousPosition.x, previousPosition.y));
 
-                currentlyDragging = null;
-                RemoveHighlightTiles();
+                if (ContainsValidMove(ref availableMoves, new Vector2Int(hitPosition.x, hitPosition.y)))
+                {
+                    MoveTo(previousPosition.x, previousPosition.y, hitPosition.x, hitPosition.y);
+
+                    //Net Implementation
+                    NetMakeMove mm = new NetMakeMove();
+                    mm.originalX = previousPosition.x;
+                    mm.originalY = previousPosition.y;
+                    mm.destinationX = hitPosition.x;
+                    mm.destinationY = hitPosition.y;
+                    mm.teamID = currentTeam;
+                    Client.Instance.SendToServer(mm);
+
+                }
+                else
+                {
+                    currentlyDragging.SetPosition(GetTileCenter(previousPosition.x, previousPosition.y));
+                    currentlyDragging = null;
+                    RemoveHighlightTiles();
+
+                }
             }
         }
         else
@@ -611,12 +627,11 @@ public class ChessB : MonoBehaviour
 
         return false;
     }
-    private bool MoveTo(ChessPiece cp, int x, int y)
-    {
-        if (!ContainsValidMove(ref availableMoves, new Vector2Int(x, y)))
-            return false;
 
-        Vector2Int previousPosition = new Vector2Int(cp.currentX, cp.currentY);
+    private void MoveTo(int originalX, int originalY, int x, int y)
+    {
+        ChessPiece cp = chessPieceLocation[originalX, originalY];
+        Vector2Int previousPosition = new Vector2Int(originalX, originalY);
 
         //is the tile we are trying to move to occupied?
         if(chessPieceLocation[x, y] != null)
@@ -624,7 +639,7 @@ public class ChessB : MonoBehaviour
             ChessPiece occupier = chessPieceLocation[x, y];
 
             if (cp.team == occupier.team)
-                return false;
+                return;
 
             //if it's occupied by the opponent
             if (occupier.team == 0)
@@ -653,15 +668,22 @@ public class ChessB : MonoBehaviour
         PositionSinglePiece(x, y);
 
         isWhiteTurn = !isWhiteTurn;
+        if (localGame)
+            currentTeam = (currentTeam == 0) ? 1 : 0; 
         moveList.Add(new Vector2Int[] { previousPosition, new Vector2Int(x, y)} );
 
         ProcessSpecialMove();
-        if(CheckForCheckmate())
+
+        if(currentlyDragging)
+            currentlyDragging = null;
+        RemoveHighlightTiles();
+
+        if (CheckForCheckmate())
         {
             Checkmate(cp.team);
         }
 
-        return true;
+        return;
     }
 
     private Vector2Int LookupTileIndex(GameObject hitInfo)
@@ -678,14 +700,25 @@ public class ChessB : MonoBehaviour
     private void RegisterEvents()
     {
         NetUtility.S_WELCOME += OnWelcomeServer; //server is listening for the WELCOME message
+        NetUtility.S_MAKE_MOVE += OnMakeMoveServer;
+
         NetUtility.C_WELCOME += OnWelcomeClient; //client is listening for the response
         NetUtility.C_START_GAME += OnSartGameClient; //client is listening for the START_GAME message
+        NetUtility.C_MAKE_MOVE += OnMakeMoveClient;
+
+        GameUI.Instance.SetLocalGame += OnSetLocalGame;
 
     }
 
     private void UnRegisterEvents()
     {
-        
+        NetUtility.S_WELCOME -= OnWelcomeServer;
+        NetUtility.S_MAKE_MOVE -= OnMakeMoveServer;
+        NetUtility.C_WELCOME -= OnWelcomeClient;
+        NetUtility.C_START_GAME -= OnSartGameClient;
+        NetUtility.C_MAKE_MOVE -= OnMakeMoveClient;
+
+        GameUI.Instance.SetLocalGame -= OnSetLocalGame;
     }
     //Server
     private void OnWelcomeServer(NetMessage msg, NetworkConnection cnn)
@@ -702,18 +735,61 @@ public class ChessB : MonoBehaviour
             Server.Instance.Broadcast(new NetStartGame());
     }
 
+    /// <summary>
+    /// if validating the move that would be done here - add some checks to make sure that the move is make by the player / and not a hacker
+    /// </summary>
+    /// <param name="msg"></param>
+    /// <param name="cnn"></param>
+    private void OnMakeMoveServer(NetMessage msg, NetworkConnection cnn)
+    {
+        NetMakeMove mm = msg as NetMakeMove;
+        Server.Instance.Broadcast(mm);
+    }
+
     //Client
     private void OnWelcomeClient(NetMessage msg)
     {
         NetWelcome nw = msg as NetWelcome;
         currentTeam = nw.AssignedTeam;
         Debug.Log($"Assigned Team: {nw.AssignedTeam}");
+
+        if(localGame && currentTeam == 0)
+        {
+            Server.Instance.Broadcast(new NetStartGame());
+        }
     }
 
     private void OnSartGameClient(NetMessage msg)
     {
         //the game is already running in the background; we just need to change the camera to bring it into view
         GameUI.Instance.ChangeCamera((currentTeam == 0) ? CameraAngle.whiteTeam : CameraAngle.blackTeam); // 0 = white team 
+    }
+
+    /// <summary>
+    /// if this is our team, replicate the move with the MoveTo function.
+    /// This will make moving appear smooth on the client side (as opposed to making a request to move - ie waiting until Server.Instance.Broadcast boradcasts the OnMakeMove message before letting everyone make a move
+    /// which in some situations would be preferable (eg. if you wanted to validate the move and make sure it's not a hacker).  however that extra step will create a delay.   
+    /// </summary>
+    /// <param name="msg"></param>
+    private void OnMakeMoveClient(NetMessage msg)
+    {
+        NetMakeMove mm = msg as NetMakeMove;
+        Debug.Log($"MM : {mm.teamID} : {mm.originalX} : {mm.originalY} -> {mm.destinationX} , {mm.destinationY}");
+
+        if (mm.teamID != currentTeam)
+        {
+            //we need to replicate MoveTo, but also all of the possible moves so that it is recreated correctly for both players
+            ChessPiece target = chessPieceLocation[mm.originalX, mm.originalY];
+            availableMoves = target.GetAvailableMoves(ref chessPieceLocation, TILE_COUNT_X, TILE_COUNT_Y);
+            specialMove = target.GetSpecialMoves(ref chessPieceLocation, ref moveList, ref availableMoves);
+
+            MoveTo(mm.originalX, mm.originalY, mm.destinationX, mm.destinationY);
+        }
+    }
+
+    private void OnSetLocalGame(bool v)
+    {
+        localGame = v;
     }
     #endregion
 }

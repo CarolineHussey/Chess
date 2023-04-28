@@ -14,7 +14,7 @@ public class NetStartGame : NetMessage
         Code = OpCode.START_GAME;
     }
 
-    public NetStartGame(DataStreamReader reader) //<-- when a package is received with the Welcome message
+    public NetStartGame(DataStreamReader reader) //<-- when a package is received with the START_GAME message
     {
         //parse the data packet
         Code = OpCode.START_GAME;
@@ -23,7 +23,7 @@ public class NetStartGame : NetMessage
 
     public override void Serialize(ref DataStreamWriter writer)
     {
-        //write the OpCode and team to the data packet
+        //write the OpCode to the data packet
         writer.WriteByte((byte)Code);
     }
 

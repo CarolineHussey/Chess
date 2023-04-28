@@ -1,5 +1,6 @@
 using UnityEngine;
 using TMPro;
+using System;
 
 public enum CameraAngle
 {
@@ -19,9 +20,11 @@ public class GameUI : MonoBehaviour
     [SerializeField] private TMP_InputField addressInput;
     [SerializeField] private GameObject[] cameraAngles;
 
+    public Action<bool> SetLocalGame; 
     private void Awake()
     {
         Instance = this;
+        RegisterEvents();
     }
 
     //Cameras
@@ -43,6 +46,7 @@ public class GameUI : MonoBehaviour
     public void OnLocalGameButton()
     {
         menuAnimator.SetTrigger("NoMenu");
+        SetLocalGame?.Invoke(true);
         server.Init(8005);
         client.Init("127.0.0.1", 8005);
     }
@@ -54,6 +58,7 @@ public class GameUI : MonoBehaviour
 
     public void OnOnlineHostButton()
     {
+        SetLocalGame?.Invoke(false);
         server.Init(8005);
         client.Init("127.0.0.1", 8005);
         menuAnimator.SetTrigger("HostMenu");
@@ -61,6 +66,7 @@ public class GameUI : MonoBehaviour
 
     public void OnOnlineConnectButton()
     {
+        SetLocalGame?.Invoke(false);
         client.Init(addressInput.text, 8005);
         menuAnimator.SetTrigger("NoMenu"); 
     }
@@ -77,7 +83,24 @@ public class GameUI : MonoBehaviour
         menuAnimator.SetTrigger("OnlineMenu");
     }
 
+    //use messaging (copied from ChessB) to control menu switching when game starts
+    #region
+    private void RegisterEvents()
+    {
 
+        NetUtility.C_START_GAME += OnSartGameClient; //client is listening for the START_GAME message
+
+    }
+
+    private void UnRegisterEvents()
+    {
+        NetUtility.C_START_GAME -= OnSartGameClient;
+    }
+    private void OnSartGameClient(NetMessage obj)
+    {
+        menuAnimator.SetTrigger("NoMenu");
+    }
+    #endregion
 
 
 }
