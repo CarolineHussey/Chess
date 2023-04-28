@@ -83,6 +83,12 @@ public class GameUI : MonoBehaviour
         menuAnimator.SetTrigger("OnlineMenu");
     }
 
+    public void OnExitGameMenu()
+    {
+        ChangeCamera(CameraAngle.menu);
+        menuAnimator.SetTrigger("StartMenu");
+    }
+
     //use messaging (copied from ChessB) to control menu switching when game starts
     #region
     private void RegisterEvents()
@@ -100,6 +106,7 @@ public class GameUI : MonoBehaviour
     {
         menuAnimator.SetTrigger("NoMenu");
     }
+
     #endregion
 
 

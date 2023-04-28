@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using Unity.Networking.Transport;
 using UnityEngine;
+using UnityEngine.UI;
 
 public enum SpecialMove
 {
@@ -22,6 +23,8 @@ public class ChessB : MonoBehaviour
     [SerializeField] private float deathSpacing = 0.5f;
     [SerializeField] private float dragOffset = 1.0f;
     [SerializeField] private GameObject victoryScreen;
+    [SerializeField] private Transform rematchIndicator;
+    [SerializeField] private Button rematchOption;
 
     [Header("Materials & Prefabs")]
     [SerializeField] private GameObject[] Prefabs;
@@ -49,7 +52,7 @@ public class ChessB : MonoBehaviour
     private int playerCount = -1; // for server to assign team in OnWelcomeServer (track how many players)
     private int currentTeam = -1; //for server and client (tracks team assignment)
     private bool localGame = true; //to keep track if game is online or local - value is set in GameUI script by listening for event
-    
+    private bool[] playerRematch = new bool[2];
 
     private void Start()
     {
@@ -309,12 +312,45 @@ public class ChessB : MonoBehaviour
 
     }
 
-    public void OnResetButton()
+    public void OnReMatchButton()
     {
+        if(localGame)
+        {
+            NetRematch rmw = new NetRematch();
+            rmw.teamId = 0;
+            rmw.wantRematch = 1;
+            Client.Instance.SendToServer(rmw);
+
+            NetRematch rmb = new NetRematch();
+            rmb.teamId = 1;
+            rmb.wantRematch = 1;
+            Client.Instance.SendToServer(rmb);
+        }
+        else
+        {
+            NetRematch rm = new NetRematch();
+            rm.teamId = currentTeam;
+            rm.wantRematch = 1;
+            Client.Instance.SendToServer(rm);
+        }
+
+    }
+    public void GameReset()
+    {
+        rematchOption.interactable = true;
+
+        rematchIndicator.transform.GetChild(0).gameObject.SetActive(false);
+        rematchIndicator.transform.GetChild(1).gameObject.SetActive(false);
+
         victoryScreen.transform.GetChild(0).gameObject.SetActive(false);
         victoryScreen.transform.GetChild(1).gameObject.SetActive(false);
         victoryScreen.SetActive(false);
-        
+
+        currentlyDragging = null;
+        availableMoves.Clear();
+        moveList.Clear();
+        playerRematch[0] = playerRematch[1] = false;
+
         //remove Game Objects
         for (int x = 0; x < TILE_COUNT_X; x++)
         {
@@ -337,19 +373,28 @@ public class ChessB : MonoBehaviour
         deadWhites.Clear();
         deadBlacks.Clear();
 
-        currentlyDragging = null;
-        availableMoves.Clear();
-        moveList.Clear();
-
         //restart board
         SpawnAllPieces();
         PositionAllPieces();
         isWhiteTurn = true;
     }
-
-    public void OnExitButton()
+    public void OnMenuButton()
     {
-        Application.Quit();
+
+        NetRematch rm = new NetRematch();
+        rm.teamId = currentTeam;
+        rm.wantRematch = 0;
+        Client.Instance.SendToServer(rm);
+
+        GameReset();
+        GameUI.Instance.OnExitGameMenu();
+
+        Invoke("ShutdownRelay", 1.0f); //use invoke to shudown server & client so we can delay the calling of these methods so that they are called after the messages are sent.
+                                       //Client/Server.Instance.Shutdown() created a conflict where shutdown was called here at the same time as the messages were sent and UI didn't render properly.  
+
+        //Reset values
+        playerCount = -1;
+        currentTeam = -1;
     }
 
     // Special Moves
@@ -701,10 +746,12 @@ public class ChessB : MonoBehaviour
     {
         NetUtility.S_WELCOME += OnWelcomeServer; //server is listening for the WELCOME message
         NetUtility.S_MAKE_MOVE += OnMakeMoveServer;
+        NetUtility.S_REMATCH += OnRematchServer;
 
         NetUtility.C_WELCOME += OnWelcomeClient; //client is listening for the response
         NetUtility.C_START_GAME += OnSartGameClient; //client is listening for the START_GAME message
         NetUtility.C_MAKE_MOVE += OnMakeMoveClient;
+        NetUtility.C_REMATCH += OnRematchClient;
 
         GameUI.Instance.SetLocalGame += OnSetLocalGame;
 
@@ -714,9 +761,12 @@ public class ChessB : MonoBehaviour
     {
         NetUtility.S_WELCOME -= OnWelcomeServer;
         NetUtility.S_MAKE_MOVE -= OnMakeMoveServer;
+        NetUtility.S_REMATCH -= OnRematchServer;
+
         NetUtility.C_WELCOME -= OnWelcomeClient;
         NetUtility.C_START_GAME -= OnSartGameClient;
         NetUtility.C_MAKE_MOVE -= OnMakeMoveClient;
+        NetUtility.C_REMATCH -= OnRematchClient;
 
         GameUI.Instance.SetLocalGame -= OnSetLocalGame;
     }
@@ -742,14 +792,19 @@ public class ChessB : MonoBehaviour
     /// <param name="cnn"></param>
     private void OnMakeMoveServer(NetMessage msg, NetworkConnection cnn)
     {
-        NetMakeMove mm = msg as NetMakeMove;
+        NetMakeMove mm = msg as NetMakeMove; 
         Server.Instance.Broadcast(mm);
+    }
+
+    private void OnRematchServer(NetMessage msg, NetworkConnection cnn)
+    {
+        Server.Instance.Broadcast(msg);
     }
 
     //Client
     private void OnWelcomeClient(NetMessage msg)
     {
-        NetWelcome nw = msg as NetWelcome;
+        NetWelcome nw = msg as NetWelcome; //create a new message
         currentTeam = nw.AssignedTeam;
         Debug.Log($"Assigned Team: {nw.AssignedTeam}");
 
@@ -786,10 +841,39 @@ public class ChessB : MonoBehaviour
             MoveTo(mm.originalX, mm.originalY, mm.destinationX, mm.destinationY);
         }
     }
+    private void OnRematchClient(NetMessage msg)
+    {
+        NetRematch rm = msg as NetRematch;
+
+        playerRematch[rm.teamId] = rm.wantRematch == 1; // true
+        if (rm.teamId != currentTeam)
+        {
+            rematchIndicator.transform.GetChild((rm.wantRematch == 1) ? 0 : 1).gameObject.SetActive(true);
+            if (rm.wantRematch != 1) //if the player does not want a rematch
+            {
+                rematchOption.interactable = false;
+            }
+
+        }
+
+        //if both players agree to rematch
+        if (playerRematch[0] && playerRematch[1])
+            GameReset();
+
+
+    }
 
     private void OnSetLocalGame(bool v)
     {
+        playerCount = -1;
+        currentTeam = -1;
         localGame = v;
+    }
+
+    private void ShutdownRelay(float s)
+    {
+        Client.Instance.ShutDown();
+        Server.Instance.ShutDown();
     }
     #endregion
 }
